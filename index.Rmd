@@ -27,11 +27,8 @@ dataRelevant <- data[ ,relevantColumns]
 
 I then split the data into a training set (75%) and a test set (25%).
 
-```{r, results='hide'}
-library(caret) 
-```
-
 ```{r}
+library(caret) 
 set.seed(23134)
 inTrain <- createDataPartition(y=dataRelevant$classe, p=0.75, list=FALSE)
 training <- dataRelevant[inTrain,]
@@ -57,13 +54,10 @@ Principal compontent analysis was used to reduce the number of significant
 variables.  To mitigate overfitting, 10-fold cross-validation (the default) was
 used.
 
-```{r, results='hide'}
+```{r}
 library(randomForest)
 modFit <- train(classe ~ ., data = training, preProcess = "pca", method = "rf", trControl = trainControl(method = "cv"), prox = TRUE, ntree = 100)
 stopCluster(cl)
-```
-
-```{r}
 modFit
 ```
 

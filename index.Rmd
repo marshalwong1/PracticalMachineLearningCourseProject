@@ -1,0 +1,93 @@
+---
+title: "Predicting Types of Exercise from Wearable Devices"
+author: "Marshal Wong"
+date: "October 24, 2014"
+output: html_document
+---
+
+After loading the dataset, I reviewed the summary of the data.  See Figure A.
+```{r}
+data <- read.csv("./data/pml-training.csv")
+```
+
+Variables that were logically not relevant to the analysis, such as subject,
+time, etc. were removed along with variables which contained mostly blanks or
+`NA`s.  I noted that removal of the mostly blanks and `NA`s columns made 
+logical sense as these columns were statistical columns, such as max, min, 
+kurtosis, etc.  The remaining columns were the roll, pitch, yaw, total
+acceleration, three-dimensional gyros, three-dimensional acceleration, and
+three-dimensional magnet for belt, arm, dumbell and forearm.  Again, it would
+be logical that some of these characteristics would define the full motion of the
+activity for prediction.
+
+```{r}
+relevantColumns <- c(8:11, 37:49, 60:68, 84:86, 102, 113:124, 140, 151:160)
+dataRelevant <- data[ ,relevantColumns]
+```
+
+I then split the data into a training set (75%) and a test set (25%).
+
+```{r, results='hide'}
+library(caret) 
+```
+
+```{r}
+set.seed(23134)
+inTrain <- createDataPartition(y=dataRelevant$classe, p=0.75, list=FALSE)
+training <- dataRelevant[inTrain,]
+testing <- dataRelevant[-inTrain,]
+dim(training)
+```
+
+To take advantage of the processing power of the machine, I used the `parallel`
+package.  The random number generator stream was also set.
+
+```{r}
+library(parallel)
+mc <- detectCores()
+cl <- makeCluster(mc)
+clusterSetRNGStream(cl, 93041)
+```
+
+Using the training set, I used the random forest method to generate the model.
+For performance purposes, I only grew 100 trees per forest as opposed to the
+default 500.  However, this did not appear to effect the accuracy of the model.
+
+Principal compontent analysis was used to reduce the number of significant
+variables.  To mitigate overfitting, 10-fold cross-validation (the default) was
+used.
+
+```{r, results='hide'}
+library(randomForest)
+modFit <- train(classe ~ ., data = training, preProcess = "pca", method = "rf", trControl = trainControl(method = "cv"), prox = TRUE, ntree = 100)
+stopCluster(cl)
+```
+
+```{r}
+modFit
+```
+
+According to the cross-validation in the model, the accuracy of the model is
+100%.  To test this, we compared the predictions of the model based on the testing data and created a confusion matrix.
+
+```{r}
+pred <- predict(modFit, testing)
+testing$predRight <- pred == testing$classe
+table(pred, testing$classe)
+```
+
+Based on the testing data/confusion matrix, the expected accuracy is
+calculated as follows:
+
+```{r}
+cvAcc <- sum(testing$predRight) / length (testing$predRight)
+cvAcc
+```
+
+Therefore, the expected out-of-sample error is (1 - 0.9761) or 2.39%
+
+Figure A
+----------
+```{r}
+summary(data)
+```
